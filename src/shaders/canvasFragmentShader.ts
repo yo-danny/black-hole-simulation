@@ -96,7 +96,54 @@ vec4 compute(inout vec3 position, inout vec3 velocity, inout Ray ray) {
             float density_variation = fbm(position + uvw * 2.0, 3, 3.0, 1.2, 1.0);
             disk_intensity *= inversesqrt(dist) * density_variation;
             float dpth = step_size * (float(uMaxIterations) / 10.0) * disk_intensity;
+
+            vec3 shiftD = 0.6 * cross(normalize(ray_step), vec3(0.0, 1.0, 0.0));
+            float v = dot(ray.direction.xyz, shiftD);
+            float dopplerShift = sqrt((1.0 - v)/(1.0 + v));
+
+            float redshift = sqrt((1.0 - 2.0 / dist) / (1.0 - 2.0 / lenght(camera_pos)));
+
+            vec3 color_rgb = vec3(1.0, 0.65, 0.50) * dopplerShift * redshift * dpth;
+
+            ray.origin = vec4(position, 1.0);
+            ray.direction = vec4(velocity, 0.0);
+
+            vec4 disk_color = GetColor(ray) + vec4(color_rgb, 1.0);
+
+            return disk_color;
         }
+
+        if (dist >= BACKGROUND_DISTANCE){
+            break;
+        }
+
+        if (dist <= EVENT_HORIZON_RADIUS){
+            return vec4(0.0, 0.0, 0.0, 1.0);
+        }
+
+        position += rk_delta;
+        velocity += d;
     }
+
+    ray.origin = vec4(position, 1.0);
+    ray.direction = vec4(velocity, 0.0);
+
+    return GetColor(ray);
 }
-`
+
+void main() {
+    Ray ray = pixelToWorldRay();
+
+    vec3 position = vec3(ray.origin);
+    vec3 velocity = SPEED_OF_LIGHT * normalize(vec3(ray.direction));
+
+    vec4 color = compute(position, velocity, ray);
+
+    float glow = 0.01 / lenght(ray.origin);
+    glow = clamp(glow, 0.0, 1.0) * 12.0;
+
+    gl_FragColor = colow + glow;
+}
+`;
+
+export default fragmentShader;
