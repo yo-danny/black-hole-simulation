@@ -28,6 +28,71 @@ float diskFactor = 3.0;
 float disk_flow = 10.0;
 float flow_rate = 0.6;
 
+// matrix transforms
+
+mat4 identityMat(){
+    return mat4(
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+    );
+}
+
+mat4 translate_ColOrder(float x, float y, float z){
+    return mat4(
+        1, 0, 0, x,
+        0, 1, 0, y,
+        0, 0, 1, z,
+        0, 0, 0, 1
+    );
+}
+
+mat4 translate_RowOrder(float x, float y, float z){
+    return mat4(
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        x, y, z, 1
+    );
+}
+
+mat4 scale(float x, float y, float z){
+    return mat4(
+        x, 0, 0, 0,
+        0, y, 0, 0,
+        0, 0, z, 0,
+        0, 0, 0, 1
+    );
+}
+
+mat4 rotate_x(float theta){
+    return mat4(
+        1, 0, 0, 0,
+        0, cos(theta), -sin(theta), 0,
+        0, sin(theta), cos(theta), 0,
+        0, 0, 0, 1
+    );
+}
+
+mat4 rotate_y(float theta){
+    return mat4(
+        cos(theta), 0, sin(theta), 0,
+        0, 1, 0, 0,
+        -sin(theta), 0, cos(theta), 0,
+        0, 0, 0, 1
+    );
+}
+
+mat4 rotate_z(float theta){
+    return mat4(
+        cos(theta), -sin(theta), 0, 0,
+        sin(theta), cos(theta), 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+    );
+}
+
 // accretion disk
 
 float hash(float n) {
