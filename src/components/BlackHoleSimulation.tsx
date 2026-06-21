@@ -62,7 +62,7 @@ const BlackHoleSimulation: React.FC<BlackHoleSimulationProps> = ({
       cancelAnimationFrame(animationIdRef.current);
       animationIdRef.current = null;
     }
-}, []);
+  }, []);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -120,4 +120,73 @@ const BlackHoleSimulation: React.FC<BlackHoleSimulationProps> = ({
       }
       context.globalAlpha = 1.0;
       const fallbackTexture = new THREE.CanvasTexture(canvas);
-    }
+      if (canvasMaterialRef.current) {
+        canvasMaterialRef.current.uniforms.u_CanvasTexture.value =
+          fallbackTexture;
+        renrederer.render(scene, camera);
+      }
+    };
+
+    const loader = new THREE.TextureLoader();
+    const canvasTexture = loader.load(
+      skyTextureUrl,
+      (texture) => {
+        if (canvasMaterialRef.current) {
+          canvasMaterialRef.current.uniforms.u_CanvasTexture.value = texture;
+          renderer.render(scene, camera);
+        }
+      },
+      undefined,
+      () => {
+        createProcedureTexture(scene, camera, renderer);
+      },
+    );
+
+    const canvas_mat = new THREE.ShaderMaterial({
+      uniforms: {
+        u_AccretionDisk: { value: settings.accretion_disk ? 1 : 0 },
+        u_Resolution: { value: new THREE.Vector2(w, h) },
+        u_CanvasTexture: { value: canvasTexture },
+        uMaxIterations: { value: settings.max_iterations },
+        uPov: { value: 75.0 },
+        uStepSize: { value: 2.5 / settings.max_iterations },
+        u_CameraTranslate: { value: offsetCameraPosition.current },
+      },
+      vertexShader: canvasVertexShader,
+      fragmentShader: canvasFragmentShader,
+    });
+
+    canvasMaterialRef.current = canvas_mat;
+
+    const canvas = new THREE.Mesh(canvas_geo, canvas_mat);
+    canvasRef.current = canvas;
+    scene.add(canvas);
+
+    const handleWheel = (event: WheelEvent) => {
+      offsetCameraPosition.current.z +=
+        mapping(event.deltaY, -h, h, -10, 10) * 0.3;
+      renderer.render(scene, camera);
+    };
+
+    const handleResize = () => {
+      if (!containerRef.current || !cameraRef.current || !redererRef.current)
+        return;
+
+      const container = containerRef.current;
+      const newW = container.clientWidth || window.innerWidth;
+      const newH = container.clientHeight || window.innerHeight;
+
+      cameraRef.current.aspect = newW / newH;
+      cameraRef.current.updateProjectionMatrix();
+
+      redererRef.current.setSize(newW, newH);
+
+      if (canvasMaterialRef.current) {
+        canvasMaterialRef.current.uniforms.u_Resolution.value =
+          new THREE.Vector2(newW, newH);
+      }
+
+      rendererRef.current.render(scene, camera);
+    };
+  });
+};
