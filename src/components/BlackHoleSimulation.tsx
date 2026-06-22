@@ -188,5 +188,50 @@ const BlackHoleSimulation: React.FC<BlackHoleSimulationProps> = ({
 
       rendererRef.current.render(scene, camera);
     };
-  });
+
+    window.addEventListener("wheel", handleWheel);
+    window.addEventListener("resize", handleResize);
+
+    renderer.render(scene, camera);
+
+    return () => {
+      const container = containerRef.current;
+      stopAnimation();
+      window.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("resize", handleResize);
+
+      if (container && renderer.domElement) {
+        container.removeChild(renderer.domElement);
+      }
+
+      renderer.dispose();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (canvasMaterialRef.current) {
+      canvasMaterialRef.current.uniforms.u_AccretionDisk.value =
+        settings.accretion_disk ? 1 : 0;
+      canvasMaterialRef.current.uniforms.uMaxIterations.value =
+        settings.max_iterations;
+      canvasMaterialRef.current.uniforms.uStepSize.value =
+        2.5 / settings.max_iterations;
+
+      if (rendererRef.current && sceneRef.current && cameraRef.current) {
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+      }
+    }
+  }, [settings.accretion_disk, settings.max_iterations]);
+
+  useEffect(() => {
+    if (settings.animate && !isPaused) {
+      startAnimation();
+    } else {
+      stopAnimation();
+    }
+  }, [settings.animate, isPaused, startAnimation, stopAnimation]);
+
+  return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
 };
+
+export default BlackHoleSimulation;
