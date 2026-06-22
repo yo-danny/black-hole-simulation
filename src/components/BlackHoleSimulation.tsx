@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import * as THREE from "three";
+import canvasFragmentShader from "../shaders/canvasFragmentShader";
+import canvasVertexShader from "../shaders/canvasVertexShader";
 
 export interface SimulationSettings {
   accretion_disk: boolean;
@@ -24,7 +26,7 @@ const BlackHoleSimulation: React.FC<BlackHoleSimulationProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
-  const redererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const canvasRef = useRef<THREE.Mesh | null>(null);
   const canvasMaterialRef = useRef<THREE.ShaderMaterial | null>(null);
@@ -88,7 +90,7 @@ const BlackHoleSimulation: React.FC<BlackHoleSimulationProps> = ({
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(w, h);
     renderer.setPixelRatio(window.devicePixelRatio);
-    redererRef.current = renderer;
+    rendererRef.current = renderer;
 
     container.appendChild(renderer.domElement);
 
@@ -123,7 +125,7 @@ const BlackHoleSimulation: React.FC<BlackHoleSimulationProps> = ({
       if (canvasMaterialRef.current) {
         canvasMaterialRef.current.uniforms.u_CanvasTexture.value =
           fallbackTexture;
-        renrederer.render(scene, camera);
+        rendererRef.current.render(scene, camera);
       }
     };
 
@@ -133,12 +135,12 @@ const BlackHoleSimulation: React.FC<BlackHoleSimulationProps> = ({
       (texture) => {
         if (canvasMaterialRef.current) {
           canvasMaterialRef.current.uniforms.u_CanvasTexture.value = texture;
-          renderer.render(scene, camera);
+          rendererRef.current.render(scene, camera);
         }
       },
       undefined,
       () => {
-        createProcedureTexture(scene, camera, renderer);
+        createProcedureTexture(scene, camera, rendererRef.current);
       },
     );
 
@@ -169,7 +171,7 @@ const BlackHoleSimulation: React.FC<BlackHoleSimulationProps> = ({
     };
 
     const handleResize = () => {
-      if (!containerRef.current || !cameraRef.current || !redererRef.current)
+      if (!containerRef.current || !cameraRef.current || !rendererRef.current)
         return;
 
       const container = containerRef.current;
@@ -179,7 +181,7 @@ const BlackHoleSimulation: React.FC<BlackHoleSimulationProps> = ({
       cameraRef.current.aspect = newW / newH;
       cameraRef.current.updateProjectionMatrix();
 
-      redererRef.current.setSize(newW, newH);
+      rendererRef.current.setSize(newW, newH);
 
       if (canvasMaterialRef.current) {
         canvasMaterialRef.current.uniforms.u_Resolution.value =
