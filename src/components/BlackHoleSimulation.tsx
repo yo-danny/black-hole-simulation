@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useRef } from "react";
 import * as THREE from "three";
 import canvasFragmentShader from "../shaders/canvasFragmentShader";
 import canvasVertexShader from "../shaders/canvasVertexShader";
+import { degreeToRadian, mapping } from "../utils/math";
+import skyTextureUrl from "../assets/sky_texture.jpg";
 
 export interface SimulationSettings {
   accretion_disk: boolean;
