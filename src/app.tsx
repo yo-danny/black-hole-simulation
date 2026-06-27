@@ -3,6 +3,7 @@ import BlackHoleSimulation, {
   SimulationSettings,
 } from "./components/BlackHoleSimulation";
 import NavigationBar from "./components/NavigationBar";
+import "./App.css";
 
 function App() {
   const [settings, setSettings] = useState<SimulationSettings>({
