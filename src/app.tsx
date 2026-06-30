@@ -3,6 +3,7 @@ import BlackHoleSimulation, {
   SimulationSettings,
 } from "./components/BlackHoleSimulation";
 import NavigationBar from "./components/NavigationBar";
+// @ts-ignore: CSS module declaration missing
 import "./App.css";
 
 function App() {
@@ -56,3 +57,5 @@ function App() {
     </div>
   );
 }
+
+export default App;
