@@ -1,6 +1,6 @@
 const  fragmentShader = `
 # define SPEED_OF_LIGHT 1.0 // Speed of light normalized to 1
-# define EVENT_HORIZON_RADIOUS 1.0  // Schwarzschild radius (rs = 2GM/c²)
+# define EVENT_HORIZON_RADIUS 1.0  // Schwarzschild radius (rs = 2GM/c²)
 # define BACKGROUND_DISTANCE 10000.0    // Distance to background stars
 # define PROJECTION_DISTANCE 1.0    // Constant PI
 # define SCALE_FACTOR 1.0
@@ -8,8 +8,8 @@ const  fragmentShader = `
 
 // -uniforms-
 
-uniform float uAcrretionDisk;
-uniform sampler2D CanvasTexture;
+uniform float u_AccretionDisk;
+uniform sampler2D u_CanvasTexture;
 uniform vec2 uResolution;
 uniform vec3 uCameraTranslate;
 uniform float uPov;
@@ -27,6 +27,11 @@ float outerDiskRadius = 8.0;
 float diskFactor = 3.0;
 float disk_flow = 10.0;
 float flow_rate = 0.6;
+
+struct Ray {
+    vec4 origin;
+    vec4 direction;
+};
 
 // matrix transforms
 
@@ -132,6 +137,15 @@ float fbm(vec3 pos, const int numOctaves, const float iterScale, const float det
 
 // BLACK HOLE -------
 
+Ray pixelToWorldRay() {
+    return Ray(vec4(0.0, 0.05, 20.0, 1.0), vec4(0.0, 0.0, -1.0, 0.0));
+}
+
+vec4 GetColor(Ray ray) {
+    vec2 uv = vec2(ray.direction.x, ray.direction.y) * 0.5 + 0.5;
+    return texture2D(u_CanvasTexture, uv);
+}
+
 vec3 geodesic_equation(vec3 position, float h2) {
     // Simplified Newtonian approximation of relativistic gravity
     // position: current 3D coordinates of the light ray
@@ -140,7 +154,7 @@ vec3 geodesic_equation(vec3 position, float h2) {
     // Calculate gravitational acceleration using inverse-square law
     // The factor 3.0/2.0 comes from relativistic corrections
     // pow(length(position), 5.0) accounts for both distance and relativistic effects
-    return -(3.0/2.0) * h2 * position / pow(lenght(position), 5.0);
+    return -(3.0/2.0) * h2 * position / pow(length(position), 5.0);
 }
 
 vec4 compute(inout vec3 position, inout vec3 velocity, inout Ray ray) {
@@ -149,7 +163,7 @@ vec4 compute(inout vec3 position, inout vec3 velocity, inout Ray ray) {
 
     // angular momentum constants
     vec3 perpendicular = cross(position, velocity);
-    float mag = lenght(perpendicular);
+    float mag = length(perpendicular);
     float h2 = pow(mag, 2.0);
 
     vec4 color = vec4(1.0);
@@ -157,7 +171,7 @@ vec4 compute(inout vec3 position, inout vec3 velocity, inout Ray ray) {
     for(int i = 0; i < uMaxIterations; i++) {
         // calculate the distance between the ray an the black hole
         // assuming black hole in vec3 (0,0,0)
-        float dist = lenght(position);
+        float dist = length(position);
 
         float step_size = dist * dist * uStepSize;
         vec3 rk_delta = velocity * step_size;
@@ -172,9 +186,9 @@ vec4 compute(inout vec3 position, inout vec3 velocity, inout Ray ray) {
         vec3 d = (k1 + 2.0 * (k2 + k3) + k4)/ 6.0;
 
         vec3 ray_step = position + rk_delta + d * uStepSize;
-        float ray_step_size = lenght(ray_step);
+        float ray_step_size = length(ray_step);
 
-        if (uAccretionDisk == 1.0 && dist > innerDiskRadius && dist < outerDiskRadius && ray_step.y * position.y < pow(uStepSize, diskFactor)) {
+        if (u_AccretionDisk == 1.0 && dist > innerDiskRadius && dist < outerDiskRadius && ray_step.y * position.y < pow(uStepSize, diskFactor)) {
             // Accretion disk
             float deltaDiskRadius = outerDiskRadius - innerDiskRadius;
             float disk_dist = dist - innerDiskRadius;
@@ -186,7 +200,7 @@ vec4 compute(inout vec3 position, inout vec3 velocity, inout Ray ray) {
 
                 ray_step.y * 0.5 + 0.5
             ) / 2.0;
-            float disk_intensity = 1.0 - lenght(ray_step / vec3(outerDiskRadius, 1.0, outerDiskRadius));
+            float disk_intensity = 1.0 - length(ray_step / vec3(outerDiskRadius, 1.0, outerDiskRadius));
             disk_intensity *= smoothstep(innerDiskRadius, innerDiskRadius + 1.0, dist);
             uvw.y += uCameraTranslate.x;
             uvw.z += uCameraTranslate.x;
@@ -200,7 +214,7 @@ vec4 compute(inout vec3 position, inout vec3 velocity, inout Ray ray) {
             float v = dot(ray.direction.xyz, shiftD);
             float dopplerShift = sqrt((1.0 - v)/(1.0 + v));
 
-            float redshift = sqrt((1.0 - 2.0 / dist) / (1.0 - 2.0 / lenght(camera_pos)));
+            float redshift = sqrt((1.0 - 2.0 / dist) / (1.0 - 2.0 / length(camera_pos)));
 
             vec3 color_rgb = vec3(1.0, 0.65, 0.50) * dopplerShift * redshift * dpth;
 
@@ -238,10 +252,10 @@ void main() {
 
     vec4 color = compute(position, velocity, ray);
 
-    float glow = 0.01 / lenght(ray.origin);
+    float glow = 0.01 / length(ray.origin);
     glow = clamp(glow, 0.0, 1.0) * 12.0;
 
-    gl_FragColor = colow + glow;
+    gl_FragColor = color + glow;
 }
 `;
 
