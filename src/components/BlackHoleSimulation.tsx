@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import canvasFragmentShader from "../shaders/canvasFragmentShader";
 import canvasVertexShader from "../shaders/canvasVertexShader";
@@ -33,6 +33,7 @@ const BlackHoleSimulation: React.FC<BlackHoleSimulationProps> = ({
   const canvasRef = useRef<THREE.Mesh | null>(null);
   const canvasMaterialRef = useRef<THREE.ShaderMaterial | null>(null);
   const animationIdRef = useRef<number | null>(null);
+  const [webglError, setWebglError] = useState<string | null>(null);
 
   const offsetCameraPosition = useRef(new THREE.Vector3(0, 0, 0));
 
@@ -89,11 +90,29 @@ const BlackHoleSimulation: React.FC<BlackHoleSimulationProps> = ({
 
     const fov_y = camera.position.z * Math.tan(degreeToRadian(fov) / 2) * 2;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    let renderer: THREE.WebGLRenderer;
+
+    try {
+      renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+        powerPreference: "high-performance",
+      });
+      setWebglError(null);
+    } catch (error) {
+      console.error("Unable to initialize WebGL renderer:", error);
+      setWebglError(
+        "WebGL não está disponível neste navegador ou foi bloqueado. Ative a aceleração por hardware para visualizar a simulação.",
+      );
+      return;
+    }
+
     renderer.setSize(w, h);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     rendererRef.current = renderer;
 
+    renderer.domElement.style.width = "100%";
+    renderer.domElement.style.height = "100%";
     container.appendChild(renderer.domElement);
 
     const canvas_geo = new THREE.PlaneGeometry(fov_y * camera.aspect, fov_y);
@@ -127,7 +146,9 @@ const BlackHoleSimulation: React.FC<BlackHoleSimulationProps> = ({
       if (canvasMaterialRef.current) {
         canvasMaterialRef.current.uniforms.u_CanvasTexture.value =
           fallbackTexture;
-        rendererRef.current.render(scene, camera);
+        if (rendererRef.current) {
+          rendererRef.current.render(scene, camera);
+        }
       }
     };
 
@@ -137,12 +158,16 @@ const BlackHoleSimulation: React.FC<BlackHoleSimulationProps> = ({
       (texture) => {
         if (canvasMaterialRef.current) {
           canvasMaterialRef.current.uniforms.u_CanvasTexture.value = texture;
-          rendererRef.current.render(scene, camera);
+          if (rendererRef.current) {
+            rendererRef.current.render(scene, camera);
+          }
         }
       },
       undefined,
       () => {
-        createProcedureTexture(scene, camera, rendererRef.current);
+        if (rendererRef.current) {
+          createProcedureTexture(scene, camera, rendererRef.current);
+        }
       },
     );
 
@@ -204,11 +229,18 @@ const BlackHoleSimulation: React.FC<BlackHoleSimulationProps> = ({
       window.removeEventListener("wheel", handleWheel);
       window.removeEventListener("resize", handleResize);
 
-      if (container && renderer.domElement) {
+      if (
+        container &&
+        renderer.domElement &&
+        renderer.domElement.parentNode === container
+      ) {
         container.removeChild(renderer.domElement);
       }
 
-      renderer.dispose();
+      if (rendererRef.current) {
+        rendererRef.current.dispose();
+        rendererRef.current = null;
+      }
     };
   }, []);
 
@@ -234,6 +266,27 @@ const BlackHoleSimulation: React.FC<BlackHoleSimulationProps> = ({
       stopAnimation();
     }
   }, [settings.animate, isPaused, startAnimation, stopAnimation]);
+
+  if (webglError) {
+    return (
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#000000",
+          color: "#ffffff",
+          textAlign: "center",
+          padding: "2rem",
+          boxSizing: "border-box",
+        }}
+      >
+        {webglError}
+      </div>
+    );
+  }
 
   return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
 };
